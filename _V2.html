@@ -1,0 +1,764 @@
+<html><head><base href="." target="_blank">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>動画再生・音声録音・原稿表示アプリ</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap');
+
+  body, html {
+    margin: 0;
+    padding: 0;
+    font-family: 'Roboto', sans-serif;
+    background: #1a1a2e;
+    color: #fff;
+    height: 100vh;
+    overflow-x: hidden;
+  }
+
+  .app-container {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    min-height: 100vh;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  }
+
+  .container {
+    padding: 15px;
+    overflow-y: auto;
+  }
+
+  #videoContainer, #scriptContainer {
+    width: 100%;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  #mainContent {
+    flex-grow: 1;
+    overflow-y: auto;
+  }
+
+  h2, h3 {
+    color: #fff;
+    margin-bottom: 15px;
+    font-weight: 700;
+    text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+    font-size: 1.5rem;
+  }
+
+  video, audio {
+    width: 100%;
+    border-radius: 10px;
+    margin-bottom: 15px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  }
+
+  video {
+    height: auto;
+    max-height: 40vh;
+    object-fit: contain;
+  }
+
+  .button-group {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+    flex-wrap: wrap;
+  }
+
+  button, .file-upload {
+    background-color: #0f3460;
+    border: none;
+    color: white;
+    padding: 10px 15px;
+    text-align: center;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    margin: 4px 2px;
+    cursor: pointer;
+    border-radius: 25px;
+    transition: all 0.3s ease;
+    font-weight: 400;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  }
+
+  button:hover, .file-upload:hover {
+    background-color: #16213e;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+  }
+
+  button:disabled {
+    background-color: #445566;
+    cursor: not-allowed;
+  }
+
+  #micAccessButton {
+    background-color: #e94560;
+  }
+
+  #micAccessButton:hover {
+    background-color: #cf3f54;
+  }
+
+  #playRecordButton {
+    background-color: #1a1a2e;
+  }
+
+  #playRecordButton:hover {
+    background-color: #16213e;
+  }
+
+  #status {
+    margin-top: 10px;
+    font-weight: bold;
+    color: #e94560;
+    text-shadow: 0 0 5px rgba(233, 69, 96, 0.5);
+    font-size: 14px;
+  }
+
+  #scriptContent {
+    white-space: pre-wrap;
+    font-family: 'Roboto', sans-serif;
+    line-height: 1.6;
+    padding: 15px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    background-color: rgba(255, 255, 255, 0.05);
+    flex-grow: 1;
+    overflow-y: auto;
+    color: #fff;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    font-size: 14px;
+    max-height: 30vh;
+  }
+
+  .file-upload {
+    position: relative;
+    overflow: hidden;
+    display: inline-flex;
+    align-items: center;
+    background-color: #533483;
+    font-size: 14px;
+    padding: 10px 15px;
+  }
+
+  .file-upload:hover {
+    background-color: #42296b;
+  }
+
+  .file-upload input[type=file] {
+    font-size: 100px;
+    position: absolute;
+    left: 0;
+    top: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+
+  .icon {
+    margin-right: 8px;
+    font-size: 16px;
+  }
+
+  @keyframes pulse {
+    0% {
+      box-shadow: 0 0 0 0 rgba(233, 69, 96, 0.4);
+    }
+    70% {
+      box-shadow: 0 0 0 10px rgba(233, 69, 96, 0);
+    }
+    100% {
+      box-shadow: 0 0 0 0 rgba(233, 69, 96, 0);
+    }
+  }
+
+  .pulse {
+    animation: pulse 2s infinite;
+  }
+
+  #visualizerContainer {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-top: 15px;
+  }
+
+  .visualizer-wrapper {
+    display: flex;
+    flex-direction: column;
+    height: 100px;
+  }
+
+  .visualizer {
+    flex-grow: 1;
+    background-color: rgba(0, 0, 0, 0.3);
+    border-radius: 10px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .visualizer-bar {
+    position: absolute;
+    bottom: 0;
+    transition: height 0.05s ease;
+  }
+
+  #videoVisualizer .visualizer-bar {
+    background-color: #e94560;
+  }
+
+  #micVisualizer .visualizer-bar {
+    background-color: #533483;
+  }
+
+  #recordingVisualizer .visualizer-bar {
+    background-color: #0f3460;
+  }
+
+  .frequency-scale {
+    height: 20px;
+    display: flex;
+    justify-content: space-between;
+    padding: 0 5px;
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.7);
+  }
+
+  .frequency-marker {
+    position: relative;
+    text-align: center;
+  }
+
+  .frequency-marker::before {
+    content: '';
+    position: absolute;
+    bottom: -5px;
+    left: 50%;
+    width: 1px;
+    height: 5px;
+    background-color: rgba(255, 255, 255, 0.5);
+  }
+
+  .glow {
+    position: absolute;
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(233, 69, 96, 0.3) 0%, rgba(233, 69, 96, 0) 70%);
+    filter: blur(30px);
+    opacity: 0.5;
+    animation: float 10s ease-in-out infinite;
+  }
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0) scale(1); }
+    50% { transform: translateY(-30px) scale(1.1); }
+  }
+
+  .step {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+
+  .step-number {
+    background-color: #e94560;
+    color: #fff;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    margin-right: 10px;
+    font-size: 12px;
+  }
+
+  .instructions {
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 15px;
+    font-size: 14px;
+  }
+
+  #countdown {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 80px;
+    font-weight: bold;
+    color: #e94560;
+    text-shadow: 0 0 20px rgba(233, 69, 96, 0.7);
+    z-index: 1000;
+    display: none;
+  }
+
+  @keyframes countdownAnimation {
+    0% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+    50% { transform: translate(-50%, -50%) scale(1.5); opacity: 0.7; }
+    100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  }
+
+  #countdown.animate {
+    animation: countdownAnimation 1s ease-in-out;
+  }
+
+  #floatingButton {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background-color: #e94560;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    z-index: 1000;
+    transition: all 0.3s ease;
+  }
+
+  #floatingButton:hover {
+    transform: scale(1.1);
+  }
+
+  #floatingButton:active {
+    transform: scale(0.9);
+  }
+
+  @media (max-width: 767px) {
+    .app-container {
+      flex-direction: column;
+    }
+
+    #videoContainer, #scriptContainer {
+      width: 100%;
+      height: 50vh;
+      overflow-y: auto;
+    }
+
+    #scriptContainer {
+      position: relative;
+    }
+
+    #scriptContent {
+      max-height: none;
+      height: calc(100% - 120px);
+    }
+
+    .visualizer-wrapper {
+      height: 80px;
+    }
+
+    h2, h3 {
+      font-size: 1.4rem;
+    }
+
+    button, .file-upload {
+      font-size: 14px;
+      padding: 8px 12px;
+    }
+
+    #status, #scriptContent {
+      font-size: 14px;
+    }
+
+    .frequency-scale {
+      font-size: 10px;
+    }
+
+    .instructions {
+      font-size: 14px;
+    }
+
+    #countdown {
+      font-size: 60px;
+    }
+
+    #floatingButton {
+      width: 50px;
+      height: 50px;
+      font-size: 20px;
+    }
+  }
+
+  @media (min-width: 768px) {
+    .app-container {
+      flex-direction: row;
+    }
+
+    #videoContainer {
+      width: 60%;
+      border-right: 1px solid rgba(255, 255, 255, 0.1);
+      border-bottom: none;
+    }
+
+    #scriptContainer {
+      width: 40%;
+    }
+
+    #visualizerContainer {
+      flex-direction: row;
+    }
+
+    .visualizer-wrapper {
+      height: 150px;
+    }
+
+    h2, h3 {
+      font-size: 1.8rem;
+    }
+
+    button, .file-upload {
+      font-size: 16px;
+      padding: 12px 20px;
+    }
+
+    #status, #scriptContent {
+      font-size: 16px;
+    }
+
+    .frequency-scale {
+      font-size: 12px;
+    }
+
+    .instructions {
+      font-size: 16px;
+    }
+
+    #countdown {
+      font-size: 100px;
+    }
+
+    video {
+      max-height: 50vh;
+    }
+
+    #scriptContent {
+      max-height: 50vh;
+    }
+
+    #floatingButton {
+      display: none;
+    }
+  }
+</style>
+<script src="https://kit.fontawesome.com/your-font-awesome-kit.js" crossorigin="anonymous"></script>
+</head>
+<body>
+  <div class="app-container">
+    <div class="glow" style="top: 10%; left: 10%;"></div>
+    <div class="glow" style="top: 70%; right: 20%;"></div>
+    <div id="videoContainer" class="container">
+      <div id="mainContent">
+        <h2><i class="fas fa-film icon"></i>動画再生 & 音声録音</h2>
+        <div class="instructions">
+          <div class="step">
+            <div class="step-number">1</div>
+            <div>動画をアップロードしてください</div>
+          </div>
+          <div class="step">
+            <div class="step-number">2</div>
+            <div>マイクへのアクセスを確認してください</div>
+          </div>
+          <div class="step">
+            <div class="step-number">3</div>
+            <div>「再生 & 録音」ボタンを押して5秒後に録音を開始します</div>
+          </div>
+        </div>
+        <div class="button-group">
+          <label class="file-upload">
+            <i class="fas fa-upload icon"></i>動画をアップロード
+            <input type="file" id="videoUpload" accept="video/*">
+          </label>
+          <button id="micAccessButton"><i class="fas fa-microphone icon"></i>マイク確認</button>
+          <button id="playRecordButton" disabled class="pulse"><i class="fas fa-play icon"></i><i class="fas fa-microphone icon"></i>再生 & 録音</button>
+        </div>
+        <video id="videoPlayer" controls></video>
+        <div id="status"></div>
+        <h3><i class="fas fa-headphones icon"></i>録音した音声</h3>
+        <audio id="audioPlayer" controls></audio>
+      </div>
+      <div id="visualizerContainer">
+        <div class="visualizer-wrapper">
+          <div id="videoVisualizer" class="visualizer"></div>
+          <div class="frequency-scale">
+            <span class="frequency-marker">0Hz</span>
+            <span class="frequency-marker">2kHz</span>
+            <span class="frequency-marker">4kHz</span>
+            <span class="frequency-marker">6kHz</span>
+            <span class="frequency-marker">8kHz</span>
+            <span class="frequency-marker">10kHz</span>
+          </div>
+        </div>
+        <div class="visualizer-wrapper">
+          <div id="micVisualizer" class="visualizer"></div>
+          <div class="frequency-scale">
+            <span class="frequency-marker">0Hz</span>
+            <span class="frequency-marker">2kHz</span>
+            <span class="frequency-marker">4kHz</span>
+            <span class="frequency-marker">6kHz</span>
+            <span class="frequency-marker">8kHz</span>
+            <span class="frequency-marker">10kHz</span>
+          </div>
+        </div>
+        <div class="visualizer-wrapper">
+          <div id="recordingVisualizer" class="visualizer"></div>
+          <div class="frequency-scale">
+            <span class="frequency-marker">0Hz</span>
+            <span class="frequency-marker">2kHz</span>
+            <span class="frequency-marker">4kHz</span>
+            <span class="frequency-marker">6kHz</span>
+            <span class="frequency-marker">8kHz</span>
+            <span class="frequency-marker">10kHz</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="scriptContainer" class="container">
+      <h2><i class="fas fa-file-alt icon"></i>原稿表示</h2>
+      <div class="instructions">
+        <div class="step">
+          <div class="step-number">1</div>
+          <div>原稿ファイル（.txt）をアップロードしてください</div>
+        </div>
+        <div class="step">
+          <div class="step-number">2</div>
+          <div>アップロードした原稿が下に表示されます</div>
+        </div>
+      </div>
+      <label class="file-upload" style="margin-bottom: 15px;">
+        <i class="fas fa-upload icon"></i>原稿をアップロード
+        <input type="file" id="scriptUpload" accept=".txt">
+      </label>
+      <div id="scriptContent"></div>
+    </div>
+  </div>
+
+  <div id="countdown"></div>
+  <button id="floatingButton"><i class="fas fa-play"></i></button>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const videoUpload = document.getElementById('videoUpload');
+  const videoPlayer = document.getElementById('videoPlayer');
+  const micAccessButton = document.getElementById('micAccessButton');
+  const playRecordButton = document.getElementById('playRecordButton');
+  const floatingButton = document.getElementById('floatingButton');
+  const status = document.getElementById('status');
+  const scriptUpload = document.getElementById('scriptUpload');
+  const scriptContent = document.getElementById('scriptContent');
+  const audioPlayer = document.getElementById('audioPlayer');
+  const videoVisualizer = document.getElementById('videoVisualizer');
+  const micVisualizer = document.getElementById('micVisualizer');
+  const recordingVisualizer = document.getElementById('recordingVisualizer');
+  const countdownElement = document.getElementById('countdown');
+
+  let audioContext;
+  let mediaStreamSource;
+  let recorder;
+  let isRecording = false;
+  let micAccessGranted = false;
+  let videoAnalyser, micAnalyser, recordingAnalyser;
+
+  function createVisualizer(container, analyser) {
+    const bufferLength = analyser.frequencyBinCount;
+    const dataArray = new Uint8Array(bufferLength);
+    const barWidth = container.clientWidth / bufferLength;
+
+    // Remove existing bars
+    while (container.firstChild) {
+      container.removeChild(container.firstChild);
+    }
+
+    for (let i = 0; i < bufferLength; i++) {
+      const bar = document.createElement('div');
+      bar.classList.add('visualizer-bar');
+      bar.style.left = i * barWidth + 'px';
+      bar.style.width = barWidth + 'px';
+      container.appendChild(bar);
+    }
+
+    function updateVisualizer() {
+      analyser.getByteFrequencyData(dataArray);
+      const bars = container.getElementsByClassName('visualizer-bar');
+      for (let i = 0; i < bufferLength; i++) {
+        const height = dataArray[i] / 2;
+        bars[i].style.height = height + '%';
+      }
+      requestAnimationFrame(updateVisualizer);
+    }
+
+    updateVisualizer();
+  }
+
+  videoUpload.addEventListener('change', (event) => {
+    const file = event.target.files[0];
+    const videoURL = URL.createObjectURL(file);
+    videoPlayer.src = videoURL;
+    status.textContent = `動画「${file.name}」がアップロードされました。`;
+
+    videoPlayer.onloadedmetadata = () => {
+      if (!audioContext) {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      const source = audioContext.createMediaElementSource(videoPlayer);
+      videoAnalyser = audioContext.createAnalyser();
+      videoAnalyser.fftSize = 256;
+      source.connect(videoAnalyser);
+      videoAnalyser.connect(audioContext.destination);
+      createVisualizer(videoVisualizer, videoAnalyser);
+    };
+  });
+
+  scriptUpload.addEventListener('change', (event) => {
+    const file = event.target.files[0];
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      scriptContent.textContent = e.target.result;
+      status.textContent = `原稿「${file.name}」が読み込まれました。`;
+    };
+    reader.readAsText(file);
+  });
+
+  micAccessButton.addEventListener('click', async () => {
+    try {
+      if (!audioContext) {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaStreamSource = audioContext.createMediaStreamSource(stream);
+      micAnalyser = audioContext.createAnalyser();
+      micAnalyser.fftSize = 256;
+      mediaStreamSource.connect(micAnalyser);
+      createVisualizer(micVisualizer, micAnalyser);
+      
+      micAccessGranted = true;
+      status.textContent = 'マイクアクセスが許可されました。録音の準備ができました！';
+      micAccessButton.disabled = true;
+      playRecordButton.disabled = false;
+      playRecordButton.classList.add('pulse');
+      floatingButton.classList.add('pulse');
+    } catch (err) {
+      console.error('Error accessing the microphone:', err);
+      status.textContent = 'マイクへのアクセスが拒否されました。設定を確認してください。';
+    }
+  });
+
+  function toggleRecording() {
+    if (!isRecording) {
+      startCountdown();
+    } else {
+      stopRecording();
+    }
+  }
+
+  playRecordButton.addEventListener('click', toggleRecording);
+  floatingButton.addEventListener('click', toggleRecording);
+
+  function startCountdown() {
+    let count = 5;
+    countdownElement.style.display = 'block';
+    countdownElement.textContent = count;
+    countdownElement.classList.add('animate');
+
+    const countdownInterval = setInterval(() => {
+      count--;
+      countdownElement.textContent = count;
+      countdownElement.classList.remove('animate');
+      void countdownElement.offsetWidth;
+      countdownElement.classList.add('animate');
+
+      if (count === 0) {
+        clearInterval(countdownInterval);
+        countdownElement.style.display = 'none';
+        startRecording();
+      }
+    }, 1000);
+  }
+
+  function startRecording() {
+    if (!micAccessGranted) {
+      status.textContent = 'まずマイクアクセスを確認してください。';
+      return;
+    }
+
+    recorder = new MediaRecorder(mediaStreamSource.mediaStream);
+    let audioChunks = [];
+
+    recorder.ondataavailable = (e) => {
+      audioChunks.push(e.data);
+    };
+
+    recorder.onstop = () => {
+      const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+      const audioUrl = URL.createObjectURL(audioBlob);
+      audioPlayer.src = audioUrl;
+
+      // Set up recording visualizer
+      const audioSource = audioContext.createMediaElementSource(audioPlayer);
+      recordingAnalyser = audioContext.createAnalyser();
+      recordingAnalyser.fftSize = 256;
+      audioSource.connect(recordingAnalyser);
+      recordingAnalyser.connect(audioContext.destination);
+      createVisualizer(recordingVisualizer, recordingAnalyser);
+    };
+
+    recorder.start();
+    videoPlayer.play();
+    isRecording = true;
+    playRecordButton.innerHTML = '<i class="fas fa-stop icon"></i>停止';
+    floatingButton.innerHTML = '<i class="fas fa-stop"></i>';
+    playRecordButton.classList.remove('pulse');
+    floatingButton.classList.remove('pulse');
+    status.textContent = '録音中...お話しください。';
+  }
+
+  function stopRecording() {
+    if (recorder && isRecording) {
+      recorder.stop();
+      videoPlayer.pause();
+      isRecording = false;
+      playRecordButton.innerHTML = '<i class="fas fa-play icon"></i><i class="fas fa-microphone icon"></i>再生 & 録音';
+      floatingButton.innerHTML = '<i class="fas fa-play"></i>';
+      playRecordButton.classList.add('pulse');
+      floatingButton.classList.add('pulse');
+      status.textContent = '録音完了。下の音声プレーヤーで再生できます。';
+    }
+  }
+
+  videoPlayer.addEventListener('ended', () => {
+    if (isRecording) {
+      stopRecording();
+    }
+  });
+
+  // スマートフォンでの表示を最適化
+  function optimizeForMobile() {
+    const isMobile = window.innerWidth <= 767;
+    if (isMobile) {
+      videoPlayer.style.maxHeight = '30vh';
+      scriptContent.style.height = 'calc(50vh - 120px)';
+    } else {
+      videoPlayer.style.maxHeight = '50vh';
+      scriptContent.style.height = 'calc(100% - 120px)';
+    }
+  }
+
+  window.addEventListener('resize', optimizeForMobile);
+  optimizeForMobile();
+});
+</script>
+</body>
+</html>
